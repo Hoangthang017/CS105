@@ -1,10 +1,10 @@
-import * as THREE from '../../../build/three.module.js';
+import * as THREE from '../../build/three.module.js';
 import { OrbitControls } from '../jsm/controls/OrbitControls.js';
 import { TeapotGeometry } from '../jsm/geometries/TeapotGeometry.js';
 import { GUI } from '../jsm/libs/dat.gui.module.js';
 import { TransformControls } from '../jsm/controls/TransformControls.js';
 
-let camera, scene, renderer, gui, control, orbit, mesh, geometry, material, light, texture, plane;
+let camera, scene, renderer, gui, control, orbit, mesh, geometry, material, light, lighthelper, texture, plane;
 let size = 30;
 var data = {
     "model": "Box",
@@ -12,7 +12,7 @@ var data = {
     "detail": 5,
     "transform": "None",
     "objectcolor": 0xffffff,
-    "lighttype": "None",
+    "lighttype": "AmbientLight",
     "lightcolor": 0xffffff,
 }
 init();
@@ -31,7 +31,7 @@ function init() {
 	// Camera
     camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.01, 30000);
 
-    camera.position.set(50, 25, 50);
+    camera.position.set(-70, 70, -70);
     camera.lookAt(0, 50, 0);
 
 	// Scene
@@ -40,19 +40,17 @@ function init() {
 	plane.rotation.x = -Math.PI/2;
 	scene.add(plane);
     scene.add(new THREE.GridHelper(10000, 100, 0x888888, 0x444444));
+    plane.visible = false;
 
 	// Light
-    light = new THREE.PointLight(0xffffff, 3);
-    light.castShadow = true;
-    light.position.set(100, 100, 100);
-	light.add(new THREE.PointLightHelper( light, 15 ))
+    light = new THREE.AmbientLight(0xffffff);
     scene.add(light);
-
+    
 	// Load Texture
     texture = new THREE.TextureLoader().load('textures/scratch.jpg', render);
     texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
 
-	// Mesh
+    // Mesh
     geometry = new THREE.BoxGeometry(size, size, size);
     material = new THREE.MeshPhongMaterial({
         color: 'rgb(255, 255, 255)',
@@ -94,14 +92,10 @@ function init() {
 	cameraFolder.add(camera, 'near', 0, 200).name('Near');
 	cameraFolder.add(camera, 'far', 0, 50000).name('Far');
 	cameraFolder.add(camera, 'fov', 0, 100).name('FOV');
-
+    
 	let lightFolder = gui.addFolder('Light');
-	lightFolder.add(light.position, 'x', -200, 200).name('X');
-	lightFolder.add(light.position, 'y', -200, 200).name('Y');
-	lightFolder.add(light.position, 'z', -200, 200).name('Z');
-	lightFolder.add(light, 'intensity', 0, 10).name('Intensity');
+    lightFolder.add(data, 'lighttype', ['AmbientLight', 'PointLight']).name('Light Type').onChange(generateLight);
     lightFolder.addColor( data, 'lightcolor' ).name('Color').onChange(function(value) {light.color.set(value)});
-	lightFolder.open();
 
 	// Resize
     window.addEventListener('resize', onWindowResize);
@@ -150,6 +144,34 @@ function render() {
 
 }
 
+function generateLight(){
+    switch(data.lighttype){
+        case 'AmbientLight':
+            if (light.parent == scene){
+                scene.remove(light);
+            }
+            light = new THREE.AmbientLight(0xffffff);
+            scene.add(light);
+            plane.visible = false;
+            if (lighthelper.parent = scene){
+                scene.remove(lighthelper);
+            }
+            break;
+        case 'PointLight':
+            if (light.parent == scene){
+                scene.remove(light);
+            }
+            light = new THREE.PointLight(0xffffff, 2);
+            scene.add(light);
+            light.castShadow = true;
+            light.position.set(40, 40, 40);
+            plane.visible = true;
+            lighthelper = new THREE.PointLightHelper( light, 15 );
+            light.add(lighthelper);
+            break;
+    }
+}
+
 function generateGeometry() {
     if (control.object != undefined) {
         control.detach();
@@ -168,10 +190,7 @@ function generateGeometry() {
             size: 1
         }));
     } else if (data.surface == "Texture") {
-        mesh = new THREE.Mesh(geometry, new THREE.MeshLambertMaterial({
-            color: 'rgb(255, 255, 255)',
-            map: data.surface === "Texture" ? texture : null
-        }));
+        document.getElementById("upload").click();  
     } else {
         mesh = new THREE.Mesh(geometry, new THREE.MeshPhongMaterial({
             color: 'rgb(255, 255, 255)'
